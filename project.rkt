@@ -44,7 +44,7 @@
   (define (helper)
     (begin
       (set! k (random-natural q))
-      (display k) (display "\n")
+      
       (define r (modulo (modular-expt g k p) q))
       (if (equal? r 0)
           (helper)
@@ -67,8 +67,8 @@
       (let* ((w (modular-inverse s q))
              (u1 (modulo (* w (string->number (string-append "#x" (sha1 m)))) q))
              (u2 (modulo (* r w) q))
-             (v (modulo (* (modular-expt g u1 p) (modular-expt y u2 p) ) q)))
-        (display v)(display "\n") (display r)
+             (v (modulo (modulo (* (modular-expt g u1 p) (modular-expt y u2 p) ) p) q)))
+        
         (equal? v r))
       
       )
@@ -77,7 +77,7 @@
   
 
 (define kpair (key-gen))
-(equal? 1 (modular-expt (cdr kpair) q p))
+
 (define sign (dig-sign (open-input-bytes #"abc") (car kpair)) )
 
 (verify (open-input-bytes #"abc") sign (cdr kpair))
