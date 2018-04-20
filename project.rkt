@@ -10,6 +10,11 @@
 (define sha sha1)
 (define hlength 20) 
 
+(define (concat l)
+  (cond [(integer? l) (int-to-bytes l)]
+        [(string? l) (int-to-bytes (string->number (string-append "#x" l)))]
+        [(list? l) (if (null? l) #"" (bytes-append (concat (car l)) (concat (cdr l)) ))]
+        [else (error "Type not handled")] ))
 
 (define (ggen h)
   (let ((g (modular-expt h quot p)))
@@ -53,7 +58,7 @@
       (define r (modulo (modular-expt g k p) q))
       (if (equal? r 0)
           (helper)
-          (let ((s (modulo (* (modular-inverse k q) (+ (* x r) (string->number (string-append "#x" (sha m))) ) ) q)))
+          (let ((s (modulo (* (modular-inverse k q) (+ (* x r) (string->number (string-append "#x" (sha (open-input-bytes (string->bytes/utf-8 m))))) ) ) q)))
             (if (equal? s 0)
                 (helper)
                 (cons r s)))
@@ -70,7 +75,7 @@
   (if (not (and (< r q) (< s q)))
       #f
       (let* ((w (modular-inverse s q))
-             (u1 (modulo (* w (string->number (string-append "#x" (sha m)))) q))
+             (u1 (modulo (* w (string->number (string-append "#x" (sha (open-input-bytes (string->bytes/utf-8 m)))))) q))
              (u2 (modulo (* r w) q))
              (v (modulo (modulo (* (modular-expt g u1 p) (modular-expt y u2 p) ) p) q)))
         
@@ -83,7 +88,7 @@
 
 (define kpair (key-gen))
 
-(define sign (dig-sign (open-input-bytes #"abc") (car kpair)) )
+(define sign (dig-sign "abc" (car kpair)) )
 
 ;(verify (open-input-bytes #"abc") sign (cdr kpair))
 
@@ -98,11 +103,7 @@
 )
   
 
-(define (concat l)
-  (cond [(integer? l) (int-to-bytes l)]
-        [(string? l) (int-to-bytes (string->number (string-append "#x" l)))]
-        [(list? l) (if (null? l) #"" (bytes-append (concat (car l)) (concat (cdr l)) ))]
-        [else (error "Type not handled")] ))
+
 
 (define (check bytestr n)
     (if (> n 8)
@@ -132,10 +133,43 @@
                                                                     (block-ltrans blck)))))))
           nos))
 
-;(struct block (hash ltans nonce) #:transparent)
-      
-      
-  
 
+
+
+(struct trans (id pub inparray outarray digsig) #:transparent )
+
+(define (check-trans? trans blckchain)
+  (define sum (foldr + 0 (map (λ (x) (car x)) (trans-outarray trans))) )
+  (define ids (trans-inparray trans))
+  (define leastid (argmin (λ x (car x)) ids))
+  (define (helper blckch)
+    (if (null? blckch)
+        (equal? sum 0)
+        (if (< (trans-id (car (block-ltrans (car blckch)))) leastid)
+            (equal? sum 0)  
+            (let ()
+              (begin
+                (define tlist (block-ltrans (car blckch)))
+                (define tpresent?
+                  (memf (λ (x) (memf (λ (y) (member y ids) ) (trans-inparray x) ) )
+                        tlist))                
+                (if (or (< sum 0) tpresent?)
+                    #f
+                    (begin
+                       (for-each (λ (x)
+                                  (let ()
+                                    (begin
+                                      (define isinput (filter (λ (y) (equal? (trans-pub trans) (cdr y)) ) (trans-outarray x) ))
+                                      (for-each (λ (y) (set! sum (- sum (car y)))) isinput)
+                                      )))
+                                tlist)
+                       (helper (cdr blckch))
+                      ))       
+                ))
+            ))    
+  )
+  (and (helper blckchain) (verify (list (trans-id trans) (trans-pub trans) (trans-inparray trans) (trans-outarray trans))
+                                  (trans-digsig trans) (trans-pub trans) ))
+  )
 
 
