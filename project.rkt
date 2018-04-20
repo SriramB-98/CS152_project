@@ -3,8 +3,13 @@
 (require openssl/sha1)
 (require math/number-theory)
 (require math/base)
+(require racket/bytes)
 
-;(sha1 (open-input-bytes #""))
+(require racket/random)
+
+(define sha sha1)
+(define hlength 20) 
+
 
 (define (ggen h)
   (let ((g (modular-expt h quot p)))
@@ -48,7 +53,7 @@
       (define r (modulo (modular-expt g k p) q))
       (if (equal? r 0)
           (helper)
-          (let ((s (modulo (* (modular-inverse k q) (+ (* x r) (string->number (string-append "#x" (sha1 m))) ) ) q)))
+          (let ((s (modulo (* (modular-inverse k q) (+ (* x r) (string->number (string-append "#x" (sha m))) ) ) q)))
             (if (equal? s 0)
                 (helper)
                 (cons r s)))
@@ -65,7 +70,7 @@
   (if (not (and (< r q) (< s q)))
       #f
       (let* ((w (modular-inverse s q))
-             (u1 (modulo (* w (string->number (string-append "#x" (sha1 m)))) q))
+             (u1 (modulo (* w (string->number (string-append "#x" (sha m)))) q))
              (u2 (modulo (* r w) q))
              (v (modulo (modulo (* (modular-expt g u1 p) (modular-expt y u2 p) ) p) q)))
         
@@ -80,4 +85,57 @@
 
 (define sign (dig-sign (open-input-bytes #"abc") (car kpair)) )
 
-(verify (open-input-bytes #"abc") sign (cdr kpair))
+;(verify (open-input-bytes #"abc") sign (cdr kpair))
+
+(struct block (hash ltrans nonce) #:transparent)
+(define (int-to-bytes x)
+(define (int-to-lbytes int)
+  (if (= int 0)
+      '()
+      (cons (remainder int 256) (int-to-lbytes (quotient int 256)))))
+
+  (list->bytes (int-to-lbytes x))
+)
+  
+
+(define (concat l)
+  (cond [(integer? l) (int-to-bytes l)]
+        [(string? l) (int-to-bytes (string->number (string-append "#x" l)))]
+        [(list? l) (if (null? l) #"" (bytes-append (concat (car l)) (concat (cdr l)) ))]
+        [else (error "Type not handled")] ))
+
+(define (check bytestr n)
+    (if (> n 8)
+        (and (equal? (bytes-ref bytestr 0) 0) (check (subbytes bytestr 1) (- n 8)) )
+        (< (bytes-ref bytestr 0) (expt 2 (- 8 n)))))
+
+(define (mine hash ltrans nos)
+  (define blockbyte (concat (list hash ltrans)) )
+  
+  (define iter 0)
+  (define (helper)
+    (begin
+      (define nonce (crypto-random-bytes hlength))
+      (define trial (concat (sha (open-input-bytes (bytes-append nonce blockbyte)))) )
+      (if (check trial nos)
+          (cons nonce iter trial)
+          (begin (set! iter (+ iter 1) ) (helper)))
+      )
+    )
+  (helper)
+  )
+
+
+(define (verify-nonce blck nos)
+  (check (concat (sha (open-input-bytes (bytes-append (block-nonce blck)
+                                                      (concat (list (block-hash blck)
+                                                                    (block-ltrans blck)))))))
+          nos))
+
+;(struct block (hash ltans nonce) #:transparent)
+      
+      
+  
+
+
+
