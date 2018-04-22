@@ -1,9 +1,9 @@
 #lang racket
-
 (require openssl/sha1)
 (require math/number-theory)
 (require math/base)
 (require racket/bytes)
+(provide (all-defined-out))
 
 (require racket/random)
 
@@ -92,7 +92,7 @@
 
 (define kpair (key-gen))
 
-(define sign (dig-sign "abc" (car kpair)) )
+(define sign (dig-sign #"abc" (car kpair)) )
 
 ;(verify (open-input-bytes #"abc") sign (cdr kpair))
 
@@ -136,34 +136,17 @@
   (define iter 0)
   (define (helper)
     (if (< iter cp)
-        (let () (begin
-          (define nonce (crypto-random-bytes hlength))
-          (define trial (concat (sha (open-input-bytes (bytes-append nonce blockbyte)))) )
-          (if (check trial nos)
-              nonce
-              (begin (set! iter (+ iter 1) ) (helper)))
+        (let ()
+          (begin
+            (define nonce (crypto-random-bytes hlength))
+            (define trial (concat (sha (open-input-bytes (bytes-append nonce blockbyte)))) )
+            (if (check trial nos)
+                (block hash ltrans nonce)
+                (begin (set! iter (+ iter 1) ) (helper)))
           ))
         #f))
   (helper)
   )
-
-
-
-(define (mine-on-list lminer time)
-  (define nos 6)
-  (define continue? #t)
-  (define (helper mlist)
-    (if (null? mlist)
-        (helper lminer)
-        (let ([mineval (mine-for (miner-cp x) (miner-block x) nos)])
-          (if mineval
-              (begin (do stuff) #t)
-              (helper (cdr mlist))
-              )
-          )))
-  (helper lminer)
-)
-
 
 (define (verify-nonce blck nos)
   (check (concat (sha (open-input-bytes (bytes-append (block-nonce blck)
@@ -207,180 +190,15 @@
   )
 
 (define (access list i)
-  (if (= i 0)
+  (if (<= i 0)
       list
       (access (cdr list (- i 1)))))
 
 (define (access-first list i)
-  (if (= i 0)
+  (if (<= i 0)
       '()
       (cons (car list) (access (cdr list (- i 1))))))
 
 
-(define (accept-new-payment blckchain trans)
-  (define btoskip 3)
-  (define req-blockchain (access blckchain btoskip))
-
-  (define (helper chain)
-    (if (null? chain)
-        #f
-        (if (member trans (block-ltrans (car chain)) )
-            (set! btoskip 1);; insert your code
-            (helper (cdr chain))
-            )           
-        )
-    )
-  (if (< (length blckchain) btoskip) #f (helper req-blockchain))
-  )
-
-(define (make-payment myid rcvid amt)
-  ;(id pub inparray outarray digsig)
-  (define total 0)
-  (define inparray '())
-  (define (take-ids)
-    (if (< total amt)
-        (begin (set! total (+ total (cdr (car readypayments))))
-               (set! inparray (cons (car (car readypayments)) inparray))
-               (set! readypayments (cdr readypayments))
-               (take-ids)
-               )
-        total)
-    )
-  
-  (define outarray (list (cons amt rcvid) (cons (- total amt) myid)))
-
-  (define signature (dig-sign (concat (list pubid inparray outarray)) privkey) ) 
-  (begin (take-ids) (trans  pubid inparray outarray signature) )
-  )
-
-(define (Extension? blckchain message)
-  (define bool (and (verify-nonce message nos) (equal? (block-hash message) (sha (open-input-bytes (bytes-append (block-nonce (car blckchain))
-                                                                                                                 (concat (list (block-hash (car blckchain))
-                                                                                                                               (block-ltrans (car blckchain))))))))) )
-  (define newchain (cons message blckchain))
-  (define (helper)
-    (if (null? (block-ltrans (car newchain) )) (begin (set! forks (cons message forks)) #t)
-        (let () (begin
-                  (define top (car (block-ltrans (car newchain) )))
-                  (set! newchain (cons (struct-copy block (car newchain) [ltrans (cdr (block-ltrans (car newchain) ))]) (cdr newchain)) ) 
-                  (and (check-trans? top blckchain) (helper) )
-                  ))
-        )
-    )
-  (begin
-    (set! newchain (cons (struct-copy block (car newchain) [ltrans (cdr (block-ltrans (car newchain) ))]) (cdr newchain)) )
-    (and bool (helper)))
-  )
-
-(define (Extension_Fork? message)
-  ;(define newforks (map (λ (x) (append x local-Blockchain)) forks))
-  (define bool #t)
-  (define (helper forklist)
-    (if (null? forklist) (begin (set! bool #f) '())
-        (if (Extension? (append (car forklist) local-Blockchain) message)
-            (cons (cons message (car forklist)) (cdr forklist) )
-            (cons (car forklist) (helper (cdr forklist))))))
-  (begin (set! forks (helper forks)) bool )
-  )
-  
-(define (safe-fork-available?)
-  (define maxfork (argmax (λ (x) (length x)) forks))
-
-  (if (equal? (length maxfork) 4)
-      (begin
-        (extract-from-fork-new forks)
-        (set! forks '())
-        (set! localblockchain (append maxfork localBlockchain)) 
-        )
-      #f)
-  )
 
 
-  ;;((tid elementnumber amt 1/0 : comfirmed with)  )
-(define (extract-from-fork fork)
-  (define btoskip 3)
-  ;(define conf (access forks 3) )
-  (define (filtertrans transaction)
-    (index-where (trans-outarray transaction) (λ (x) (equal? (cdr x) nodename )) ) ;;nodename is public id
-    )
-  (define (iter-over-list ltrans val)
-    (if (null? ltrans) '()
-        (if (filtertrans (car ltrans))
-            (let ((elnum (filtertrans (car ltrans)))
-                  (oarr (trans-outarray (car ltrans)))
-                  ( ))
-              (cons (list (trans-id (car ltrans))
-                          elnum
-                          (car (list-ref oarr elnum))
-                          val) (iter-over-list (cdr ltrans))))
-            (iter-over-list (cdr ltrans)) ) 
-        ))
-  
-  (define (helper listf val)
-    (if (null? listf) '()
-        (append (iter-over-list (block-ltrans (car listf)) val) (helper (cdr listf) val) ))
-    )
-
-  (append (helper (access forks btoskip) 1) (helper (access-first forks btoskip ) 0 ) )
- )
-
-(define (extract-from-fork-new fork)
-  (define btoskip 3)
-  ;(define conf (access forks 3) )
-  (define (filtertrans transaction)
-    (index-where (trans-outarray transaction) (λ (x) (equal? (cdr x) nodename )) ) ;;nodename is public id
-    )
-  (define (iter-over-list ltrans val)
-    (if (null? ltrans) '()
-        (if (filtertrans (car ltrans))
-            (cons (car ltrans) (iter-over-list (cdr ltrans)))
-            (iter-over-list (cdr ltrans))) 
-        ))
-  
-  (define (helper listf val)
-    (if (null? listf) '()
-        (append (iter-over-list (block-ltrans (car listf)) val) (helper (cdr listf) val) ))
-    )
-
-  (cons (helper (access forks btoskip) 1) (helper (access-first forks btoskip ) 0 ) )
- )
-
-(define (make-block ltrans)
-  (define hash (sha (open-input-bytes (bytes-append (block-nonce (car blckchain))
-                                                    (concat (list (block-hash (car blckchain))
-                                                                  (block-ltrans (car blckchain))))))) )
-  (define i (trans-id (car (block-ltrans (car local-blockchain)))))
-  (define (add-id-to-trans list-trans)
-    (reverse (map (λ (x) (begin
-                           (set! i (+ i 1))
-                           (struct-copy trans x [id i] )) (reverse list-trans)))))
-  (block hash (add-id-to-trans ltrans) '()) 
-
-  )
-
-(define (remove-trans block)       
-  (define new-pending-trans
-    (filter-not (λ (x) (member x (block-trans block))) pending-trans)
-    )
-  (if (Extension? blckchain block) (begin (set! pending-trans new-pending-trans) #t) #f)
-)
-
-
-(define (add-trans? trans)
-  (define newchain (cons (block '() pending-trans '()) local-Blockchain))
-    (check-trans? trans newchain)
-  )
-
-(if (equal? (length list-of-transactons) 10)
-    
- )
-
-;;(id pub inparray outarray digsig)
-
-;; Extension? localblcchain message // done
-
-;; safe fork available
-
-;; can block be added to given blockchain? 
-
-;; accept new payments / make new payments //done

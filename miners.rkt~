@@ -2,21 +2,11 @@
 (require "project.rkt")
 (require data/heap)
 (require racket/class)
-(provide (all-defined-out))
 
 (struct event (process time) #:transparent)
 
-(define-syntax-rule (for-loop [sym init check change] steps ...)
-  (let loop ([sym init]
-             [value #f])
-    (if check
-        (let ([new-value (let () steps ...)])
-          (loop change new-value))
-        value)))
-
 (define no_of_zeros 6)
-(define minerlist '())
-(define block-reward 10)
+
 (define global_events%
   (class object%
     (init-field (events-list (make-heap (lambda (x y) (< (event-time x) (event-time y)))))) 
@@ -31,21 +21,18 @@
         
     (define/public (process)
       (cond
-        [(= (heap-count events-list) 0) (let () (begin
+        [(= (heap-count events-list) 0) (begin
                                           (set! global_timer (+ 1 global_timer))
-                                          (define temp-minerlist (filter (lambda (x) (send x make-block (get-field pending-trans x))) minerlist)) 
-                                          (mine-on-list 1 no_of_zeros temp-minerlist global_timer)
-                                          (process)))]
+                                          (continue-mining 1 no_of_zeros minerlist)
+                                          (process))]
         [else (begin
                (define event2 (heap-min events-list))
                (heap-remove-min! events-list)
                (if (< global_timer (event-time event2))
-                   (let () (begin
-                     (define temp-minerlist (filter (lambda (x) (send x make-block (get-field pending-trans x))) minerlist))
-                     (mine-on-list (- (event-time event2) global_timer) no_of_zeros temp-minerlist global_timer)
-                     (set! global_timer (event-time event2))
+                   (begin
+                     (continue-mining (- (event-time event2) global_timer) no_of_zeros minerlist)
                      ((event-process event2))
-                     (process)))
+                     (process))
                    (begin
                      (event-process event2)
                      (process))))]))))
@@ -58,8 +45,8 @@
     (init-field nodename)
     (init initial-connections)
     (define connections initial-connections)
-    (init-field private-key)
-    (init-field (localtime 0))
+    (define private-key)
+    (init-field localtime 0)
     
     (define local_Blockchain initial_Blockchain)
     ;Initial accepted Blockchain (for starting the simulation)
@@ -77,9 +64,9 @@
     (define pending-payments-to-be-made '())
     ;List of lists, each element list consists of a nodename and amount
     ;indicating payment of "amount" has yet to be done to the given "nodename" 
-    (define forks '())
+    (define Forks '())
     ;Simply a list of future Blockchain extensions the node has heard.
-    (init (initial_Blockchain '()))
+    (init initial_Blockchain)
     ;Block chain initializer
     (super-new)
     
@@ -126,19 +113,18 @@
                               (define (f) (send (car (car conn)) receive msg (+ (cadr (car conn)) time)))
                               (send globaleventslist insert_event f (+ (cadr (car conn)) time))
                               (send-msg (cdr conn) msg))]
-              [else (begin
-                     (display "Connections of invalid type")
+              [else ((display "Connections of invalid type")
                     (display "/n"))]))
       (send-msg connections message time))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     (define/public (receive message time)
-      (cond [(block? message) (cond [(Extension? local_Blockchain message) #t]
-                                    [(Extension_Fork? message) (begin
+      (cond [(block? message) (cond [(Extension? local_Blockchain message) (set! Forks (Add_new_fork Forks message))]
+                                    [(Extension_Fork? Fork message) (begin
                                                                      ;(set! Forks (Update_Forks Forks message))
                                                                      (if
                                                                       (Safe_Fork_Available? time)
                                                                       (begin
-                                                                        (Accept-New-Payment time)
+                                                                        (Accept-New-Payments time)
                                                                         (Make-Old-Payments time)
                                                                         )
                                                                       (void)))]
@@ -180,8 +166,8 @@
             [else (begin
                     (take-ids)
                     (let* [(outarray (list (cons amount2 nodename2) (cons (- total amount2) nodename)))
-                           (transid (string->number (string-append (~v (get-field global_timer globaleventslist) ) (~v nodename))))
-                           (signature (dig-sign (concat (list transid nodename inparray outarray)) private-key))                      
+                           (transid (string->number (string-append (~v global_timer ) (~v nodename))))
+                           (signature (dig-sign (concat (list transid nodename inparray outarray)) privkey))                      
                            (transaction_done (trans transid nodename inparray outarray signature))]                  
                      (begin
                        (Display-payment-status #t nodename amount2 nodename2 time2)
@@ -190,7 +176,7 @@
                        )))]))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (define/public (attempt_transaction nodename2 amount2 time)
-    (Make-payment 1 nodename2 amount2 time))
+    (Make-Payment 1 nodename2 amount2 time))
 
   (define/public (Make-Old-Payments time)
      (set! pending-payments-to-be-made (filter (lambda (x) (let* [(nodename2 (car x))
@@ -251,7 +237,7 @@
   (define bool #t)
   (define (helper forklist)
     (if (null? forklist) (begin (set! bool #f) '())
-        (if (Extension? (append (car forklist) local_Blockchain) message)
+        (if (Extension? (append (car forklist) local-Blockchain) message)
             (cons (cons message (car forklist)) (cdr forklist) )
             (cons (car forklist) (helper (cdr forklist))))))
   (begin (set! forks (helper forks)) bool )
@@ -282,17 +268,17 @@
                                                                                (cadr x))
                                                                               (caddr x)))
                                                             new_accepted_trans2)
-                                                       received-payments-to-be-used))
+                                                       received-accepted-to-be-payments))
             (set! pending-payments-to-confirm  (append pending-payments-to-confirm
                                                        new_pending_confirmations))
             (set! forks '())
-            (set! local_Blockchain (append maxfork local_Blockchain))) 
+            (set! localblockchain (append maxfork localBlockchain)) 
         )
       #f)
   )
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
  (define (Extension? blckchain message)
-  (define bool (and (verify-nonce message no_of_zeros) (equal? (block-hash message) (sha (open-input-bytes (bytes-append (block-nonce (car blckchain))
+  (define bool (and (verify-nonce message nos) (equal? (block-hash message) (sha (open-input-bytes (bytes-append (block-nonce (car blckchain))
                                                                                                                  (concat (list (block-hash (car blckchain))
                                                                                                                                (block-ltrans (car blckchain))))))))) )
   (define newchain (cons message blckchain))
@@ -309,79 +295,18 @@
     (set! newchain (cons (struct-copy block (car newchain) [ltrans (cdr (block-ltrans (car newchain) ))]) (cdr newchain)) )
     (and bool (helper)))
   )
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;((tid elementnumber amt 1/0 : comfirmed with)  )
-(define (extract-from-fork fork)
-  (define btoskip 3)
-  ;(define conf (access forks 3) )
-  (define (filtertrans transaction)
-    (index-where (trans-outarray transaction) (λ (x) (equal? (cdr x) nodename )) ) ;;nodename is public id
-    )
-  (define (iter-over-list ltrans val)
-    (if (null? ltrans) '()
-        (if (filtertrans (car ltrans))
-            (let ((elnum (filtertrans (car ltrans)))
-                  (oarr (trans-outarray (car ltrans)))
-                  )
-              (cons (list (trans-id (car ltrans))
-                          elnum
-                          (car (list-ref oarr elnum))
-                          val) (iter-over-list (cdr ltrans))))
-            (iter-over-list (cdr ltrans)) ) 
-        ))
-  
-  (define (helper listf val)
-    (if (null? listf) '()
-        (append (iter-over-list (block-ltrans (car listf)) val) (helper (cdr listf) val) ))
-    )
-
-  (append (helper (access forks btoskip) 1) (helper (access-first forks btoskip ) 0 ) )
- )
-
-(define (extract-from-fork-new fork)
-  (define btoskip 3)
-  ;(define conf (access forks 3) )
-  (define (filtertrans transaction)
-    (index-where (trans-outarray transaction) (λ (x) (equal? (cdr x) nodename )) ) ;;nodename is public id
-    )
-  (define (iter-over-list ltrans val)
-    (if (null? ltrans) '()
-        (if (filtertrans (car ltrans))
-            (cons (car ltrans) (iter-over-list (cdr ltrans)))
-            (iter-over-list (cdr ltrans))) 
-        ))
-  
-  (define (helper listf val)
-    (if (null? listf) '()
-        (append (iter-over-list (block-ltrans (car listf)) val) (helper (cdr listf) val) ))
-    )
-
-  (cons (helper (access forks btoskip) 1) (helper (access-first forks btoskip ) 0 ) )
- )    
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ))
 
 
    (define miner%
       (class object%
-        (init-field (pending-trans '()))
-        (init-field (nodename 0))
-        (init (initial-connections '()))
+        (define pending-transactions-block '()))
+        (init-field nodename)
+        (init initial-connections)
         (define connections initial-connections)
-        (init-field (private-key 0))
-        (init-field (localtime 0))
-        (init-field (local_Blockchain initial_Blockchain))
-        ;Initial accepted Blockchain (for starting the simulation)
-        (init (initial_Blockchain '()))
-        ;Block chain initializer
-        (init-field (computing-power intialized-power))
-        (init (intialized-power 1))
-        ;For defining the given miner's computing power
-        (init-field (block_to_be_mined initial_mining_block))
-        (init (initial_mining_block (block 0 '() 0)))
-        ;initalizer for mining block
-        (init-field (to_mine 0))
+        (define private-key)
+        (init-field localtime 0)
 
         (super-new)
 
@@ -398,110 +323,7 @@
                                        (list (car x) (cadr x))))
                                  connections)))
 
-     (define/public (Extension_new? blckchain message)
-       (define bool (and (verify-nonce message no_of_zeros) (equal? (block-hash message) (sha (open-input-bytes (bytes-append (block-nonce (car blckchain))
-                                                                                                                      (concat (list (block-hash (car blckchain))
-                                                                                                                                    (block-ltrans (car blckchain))))))))) )
-       (define newchain (cons message blckchain))
-       
-       (define (helper)
-         (if (null? (block-ltrans (car newchain) ))
-             #t
-             (let () (begin
-                       (define top (car (block-ltrans (car newchain) )))
-                       (set! newchain (cons (struct-copy block (car newchain) [ltrans (cdr (block-ltrans (car newchain) ))]) (cdr newchain)) ) 
-                       (and (check-trans? top blckchain) (helper) )
-                       ))
-             )
-         )
-       
-       (begin
-         (set! newchain (cons (struct-copy block (car newchain) [ltrans (cdr (block-ltrans (car newchain) ))]) (cdr newchain)) )
-         (and bool (helper)))
-       )
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-     (define/public (make-block ltrans)
-       (define hash (sha (open-input-bytes (bytes-append (block-nonce (car local_Blockchain))
-                                                    (concat (list (block-hash (car local_Blockchain))
-                                                                  (block-ltrans (car local_Blockchain))))))))
-;       (define i (trans-id (car (block-ltrans (car local-blockchain)))))
-;       (define (add-id-to-trans list-trans)
-;         (reverse (map (λ (x) (begin
-;                                (set! i (+ i 1))
-;                                (struct-copy trans x [id i] )) (reverse list-trans)))))
-       (if (< (length ltrans) 10)
-           #f           
-           (let* [(trans_id_here (string->number (string-append (~v (get-field global_timer globaleventslist) ) (~v nodename))))
-                  (new_ltrans (cons (trans trans_id_here
-                                           nodename
-                                           '()
-                                           (list (cons block-reward nodename))
-                                           "Nilay")
-                                    (access ltrans (- (length ltrans) 10))))]
-             (begin
-               (set! block_to_be_mined (block hash new_ltrans '()))
-               (set! to_mine 1)
-               #t))) 
-       )
-
-     (define/public (remove-trans block)       
-       (define new-pending-trans
-         (filter-not (λ (x) (member x (block-ltrans block))) pending-trans)
-         )
-       (if (Extension_new? local_Blockchain block) (begin (set! pending-trans new-pending-trans) #t) #f)
-       )
-
-
-     (define/public (add-trans? trans)
-       (define newchain (cons (block '() pending-trans '()) local_Blockchain))
-       (check-trans? trans newchain)
-       )
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         (define/public (receive message time)
-          (cond [(block? message) (remove-trans message)]
-                [(trans? message) (if (add-trans? message)
-                                      (begin
-                                       (display "New transaction discovered by miner : ")
-                                       (display nodename)
-                                       (display "/n"))
-                                      (void))]))
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-        (define/public (broadcast message time)
-          (define (send-msg conn msg time)
-            (cond [(null? conn) (display "Message Broadcasted: time:")
-                                (display (get-field global-timer globaleventslist))]
-                  [(list? conn) (begin
-                                  (define (f) (send (car (car conn)) receive msg (+ (cadr (car conn)) time)))
-                                  (send globaleventslist insert_event f (+ (cadr (car conn)) time))
-                                  (send-msg (cdr conn) msg))]
-                  [else (begin
-                          (display "Connections of invalid type")
-                          (display "/n"))]))
-          (send-msg connections message time))
-        
-))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (mine-on-list time nos lminer time2)
-  (define continue? #t)
-  (define i time)
-  (define (helper mlist)
-    (if (equal? i 0) #f
-        (if (null? mlist)
-            (begin (set! i (- i 1)) (helper lminer))
-            (let ([mineval (mine-for (get-field computing-power (car mlist)) (get-field block_to_be_mined (car mlist)) nos)])
-              (if mineval
-                  (begin
-                    (send (car mlist) remove-trans mineval)
-                    (send (car mlist) broadcast mineval (+ (- time i) 1 time2))
-                    #t)
-                  (helper (cdr mlist))
-                  )
-              ))))
-  (helper lminer)
-)
-
-
-
+          (cond [(block? message) 
     
