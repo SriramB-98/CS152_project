@@ -322,7 +322,7 @@
         (append (iter-over-list (block-ltrans (car listf)) val) (helper (cdr listf) val) ))
     )
 
-  (append (helper (access forks btoskip) 1) (helper (access-first forks btoskip ) 0 ) 
+  (append (helper (access forks btoskip) 1) (helper (access-first forks btoskip ) 0 ) )
  )
 
 (if (equal? (length list-of-transactons) 10)
