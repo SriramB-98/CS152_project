@@ -289,7 +289,7 @@
 
   (if (equal? (length maxfork) 4)
       (begin
-        ;;call extract-from-fork
+        (extract-from-fork forks)
         (set! forks '())
         (set! localblockchain (append maxfork localBlockchain)) 
         )
@@ -324,6 +324,21 @@
 
   (append (helper (access forks btoskip) 1) (helper (access-first forks btoskip ) 0 ) )
  )
+
+(define (make-block ltrans)
+  (define hash (sha (open-input-bytes (bytes-append (block-nonce (car blckchain))
+                                                    (concat (list (block-hash (car blckchain))
+                                                                  (block-ltrans (car blckchain))))))) )
+  (define i (trans-id (car (block-ltrans (car local-blockchain)))))
+  (define (add-id-to-trans list-trans)
+    (reverse (map (λ (x) (begin
+                           (set i (+ i 1))
+                           (struct-copy trans x [id i] )) (reverse list-trans)))))
+  (block hash (add-id-to-trans ltrans) '()) 
+
+  )
+
+
 
 (if (equal? (length list-of-transactons) 10)
     
