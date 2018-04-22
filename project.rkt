@@ -98,11 +98,10 @@
 
 (struct block (hash ltrans nonce) #:transparent)
 (define (int-to-bytes x)
-(define (int-to-lbytes int)
-  (if (= int 0)
-      '()
-      (cons (remainder int 256) (int-to-lbytes (quotient int 256)))))
-
+  (define (int-to-lbytes int)
+    (if (= int 0)
+        '()
+        (cons (remainder int 256) (int-to-lbytes (quotient int 256)))))
   (list->bytes (int-to-lbytes x))
 )
   
@@ -251,7 +250,7 @@
   (define outarray (list (cons amt rcvid) (cons (- total amt) myid)))
 
   (define signature (dig-sign (concat (list pubid inparray outarray)) privkey) ) 
-  (begin (take-ids) (trans '() pubid inparray outarray signature) )
+  (begin (take-ids) (trans  pubid inparray outarray signature) )
   )
 
 (define (Extension? blckchain message)
@@ -353,13 +352,24 @@
   (define i (trans-id (car (block-ltrans (car local-blockchain)))))
   (define (add-id-to-trans list-trans)
     (reverse (map (λ (x) (begin
-                           (set i (+ i 1))
+                           (set! i (+ i 1))
                            (struct-copy trans x [id i] )) (reverse list-trans)))))
   (block hash (add-id-to-trans ltrans) '()) 
 
   )
 
+(define (remove-trans block)       
+  (define new-pending-trans
+    (filter-not (λ (x) (member x (block-trans block))) pending-trans)
+    )
+  (if (Extension? blckchain block) (begin (set! pending-trans new-pending-trans) #t) #f)
+)
 
+
+(define (add-trans? trans)
+  (define newchain (cons (block '() pending-trans '()) local-Blockchain))
+    (check-trans? trans newchain)
+  )
 
 (if (equal? (length list-of-transactons) 10)
     
