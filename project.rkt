@@ -298,11 +298,11 @@
 
 
   ;;((tid elementnumber amt 1/0 : comfirmed with)  )
-(define (extract-from-fork forks)
+(define (extract-from-fork fork)
   (define btoskip 3)
   ;(define conf (access forks 3) )
   (define (filtertrans transaction)
-    (index-where (trans-outarray transaction) (λ (x) (equal? (cdr x) pubid)) )
+    (index-where (trans-outarray transaction) (λ (x) (equal? (cdr x) nodename )) ) ;;nodename is public id
     )
   (define (iter-over-list ltrans val)
     (if (null? ltrans) '()
@@ -323,6 +323,27 @@
     )
 
   (append (helper (access forks btoskip) 1) (helper (access-first forks btoskip ) 0 ) )
+ )
+
+(define (extract-from-fork-new fork)
+  (define btoskip 3)
+  ;(define conf (access forks 3) )
+  (define (filtertrans transaction)
+    (index-where (trans-outarray transaction) (λ (x) (equal? (cdr x) nodename )) ) ;;nodename is public id
+    )
+  (define (iter-over-list ltrans val)
+    (if (null? ltrans) '()
+        (if (filtertrans (car ltrans))
+            (cons (car ltrans) (iter-over-list (cdr ltrans)))
+            (iter-over-list (cdr ltrans))) 
+        ))
+  
+  (define (helper listf val)
+    (if (null? listf) '()
+        (append (iter-over-list (block-ltrans (car listf)) val) (helper (cdr listf) val) ))
+    )
+
+  (cons (helper (access forks btoskip) 1) (helper (access-first forks btoskip ) 0 ) )
  )
 
 (define (make-block ltrans)
