@@ -289,7 +289,7 @@
 
   (if (equal? (length maxfork) 4)
       (begin
-        (extract-from-fork forks)
+        (extract-from-fork-new forks)
         (set! forks '())
         (set! localblockchain (append maxfork localBlockchain)) 
         )
