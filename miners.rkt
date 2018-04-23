@@ -2,7 +2,7 @@
 (require "project.rkt")
 (require data/heap)
 (require racket/class)
-(provide (all-defined-out))
+
 
 (struct event (process time) #:transparent)
 
@@ -14,8 +14,255 @@
           (loop change new-value))
         value)))
 
+(require openssl/sha1)
+(require math/number-theory)
+(require math/base)
+(require racket/bytes)
+;(provide (all-defined-out))
+
+(require racket/random)
+
+(define sha sha1)
+(define hlength 20)
+
+(struct trans (id pub inparray outarray digsig) #:transparent )
+
+(define (concat l)
+  (begin
+    ;(newline)
+    ;(display l)
+    ;(display "This is l bitch")
+    ;(newline)
+    (cond
+      [(equal? l "") #""]
+      [(integer? l) (int-to-bytes l)]
+      [(string? l) (int-to-bytes (string->number (string-append "#x" l)))]
+      [(list? l) (if (null? l) #"" (bytes-append (concat (car l)) (concat (cdr l)) ))]
+      [(pair? l) (bytes-append (concat (car l)) (concat (cdr l)) )]
+      [(trans? l) (bytes-append (concat (trans-id l)) (concat (trans-pub l)) (concat  (trans-inparray l)) (concat (trans-outarray l)) (concat (trans-digsig l)))]
+      [else (begin
+              ;(display l)
+              (error "Type not handled"))] ))
+  )
+
+(define (ggen h)
+  (let ((g (modular-expt h quot p)))
+    (if (equal? g 1)
+        (ggen (+ h 1))
+        g)))
+
+(define (next-p p po)
+(let ((np (+ p 1)))
+  (if (prime? np)
+      np
+      (next-p (+ p po) po))))
+
+(define L 512)
+(define N 150)
+
+(define q 794789827360301020706490998086570468747482899)
+
+(define p 49276969296338663283802441881367369062343939739)
+
+(define quot (/ (- p 1) q))
+
+(define g 4611686018427387904)
+
+(define (key-gen)
+  (define sec-key (random-natural q))
+  (define pub-key (modular-expt g sec-key p))
+  (cons sec-key pub-key)
+  
+  )
+
+
+
+(define (dig-sign m x)
+
+  (define k 0)
+  (define (helper)
+    (begin
+      (set! k (random-natural q))
+      
+      (define r (modulo (modular-expt g k p) q))
+      (if (equal? r 0)
+          (helper)
+          (let ((s (modulo (* (modular-inverse k q) (+ (* x r) (string->number (string-append "#x" (sha (open-input-bytes m)))) ) ) q)))
+            (if (equal? s 0)
+                (helper)
+                (cons r s)))
+          )
+      )
+    )
+        
+  (helper)
+  )
+
+(define (verify m sign y)
+  (define r (car sign))
+  (define s (cdr sign))
+  (if (not (and (< r q) (< s q)))
+      #f
+      (let* ((w (modular-inverse s q))
+             (u1 (modulo (* w (string->number (string-append "#x" (sha (open-input-bytes m))))) q))
+             (u2 (modulo (* r w) q))
+             (v (modulo (modulo (* (modular-expt g u1 p) (modular-expt y u2 p) ) p) q)))
+        
+        (equal? v r))
+      
+      )
+  )
+
+  
+
+(define kpair (key-gen))
+
+(define sign (dig-sign #"abc" (car kpair)) )
+
+;(verify (open-input-bytes #"abc") sign (cdr kpair))
+
+(struct block (hash ltrans nonce) #:transparent)
+(define (int-to-bytes x)
+  (define (int-to-lbytes int)
+    (if (= int 0)
+        (list)
+        (cons (remainder int 256) (int-to-lbytes (quotient int 256)))))
+  (list->bytes (int-to-lbytes x))
+)
+  
+
+
+
+(define (check bytestr n)
+    (if (> n 8)
+        (and (equal? (bytes-ref bytestr 0) 0) (check (subbytes bytestr 1) (- n 8)) )
+        (< (bytes-ref bytestr 0) (expt 2 (- 8 n)))))
+
+(define (mine hash ltrans nos)
+  (define blockbyte (concat (list hash ltrans)) )  
+  (define iter 0)
+  (define (helper)
+    (begin
+      (define nonce (crypto-random-bytes hlength))
+      (define trial (concat (sha (open-input-bytes (bytes-append nonce blockbyte)))) )
+      (if (check trial nos)
+          (block hash ltrans nonce)
+          (begin (set! iter (+ iter 1) ) (helper)))
+      )
+    )
+  (helper)
+  )
+
+
+(define (mine-for cp block22 nos)
+  (define hash (block-hash block22))
+  (define ltrans (block-ltrans block22))
+  (define blockbyte (concat (list hash ltrans)) ) 
+  (define iter 0)
+  (define (helper)
+    (if (< iter cp)
+        (let ()
+          (begin
+            (define nonce (crypto-random-bytes hlength))
+            (define trial (concat (sha (open-input-bytes (bytes-append nonce blockbyte)))) )
+            (if (check trial nos)
+                (block hash ltrans nonce)
+                (begin (set! iter (+ iter 1) ) (helper)))
+          ))
+        #f))
+  (helper)
+  )
+
+(define (verify-nonce blck nos)
+  (check (concat (sha (open-input-bytes (bytes-append (block-nonce blck)
+                                                      (concat (list (block-hash blck)
+                                                                    (block-ltrans blck)))))))
+          nos))
+
+
+(define (check-trans? trans blckchain)
+  (define sum (foldr + 0 (map (λ (x) (car x)) (trans-outarray trans))) )
+  (define ids (trans-inparray trans))
+  (define ids-2 (map (λ (x) (car x)) ids)) 
+  ;(define leastid (argmin (λ (x) (car x)) ids))
+  (define (helper blckch)
+    (if (null? blckch)
+        (begin
+          ;(display sum)
+          ;(display "Sum bitch")
+          ;(newline)
+          ;(display trans)
+          ;(newline)
+          ;(newline)
+          (equal? sum 0))
+          
+  ;      (if (< (trans-id (car (block-ltrans (car blckch)))) leastid)
+   ;         (equal? sum 0)  
+            (let ()
+              (begin
+                (define tlist (block-ltrans (car blckch)))
+                (define tpresent?
+                  (memf (λ (x) (memf (λ (y) (member y ids) ) (trans-inparray x) ) )
+                        tlist))
+                ;(display "entering bitch")
+                ;(newline)
+                (if (or (< sum 0) tpresent?)
+                    #f
+                    (begin
+                      ;(display sum)
+                      ;(newline)
+                      ;(display "Sum bitch")
+                      ;(newline)
+                       (for-each (λ (x)
+                                  (let ()
+                                    (begin
+                                      (define isinput (filter (λ (y) (equal? (trans-pub trans) (cdr y)) ) (trans-outarray x) ))
+                                      ;(display isinput)
+                                      (for-each (λ (y) (set! sum (- sum (car y)))) isinput)
+                                      )))
+                                (filter (λ (x) (member (trans-id x) ids-2)) tlist))
+                       (helper (cdr blckch))
+                      ))       
+                ))
+            )    
+  )
+  (begin
+    ;(display "CHeck-Trans")
+    ;(display (verify (concat (list (trans-id trans) (trans-pub trans) (trans-inparray trans) (trans-outarray trans)))
+                                 ; (trans-digsig trans) (trans-pub trans) ))
+    ;(newline)
+    (and (helper blckchain) (verify (concat (list (trans-id trans) (trans-pub trans) (trans-inparray trans) (trans-outarray trans)))
+                                  (trans-digsig trans) (trans-pub trans) ))
+  ))
+
+(define (access list i)
+  (if (<= i 0)
+      list
+      (access (cdr list (- i 1)))))
+
+(define (access-first list i)
+  (if (<= i 0)
+      (list)
+      (cons (car list) (access (cdr list (- i 1))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (define no_of_zeros 6)
-(define minerlist '())
+(define minerlist (list ))
 (define block-reward 10)
 (define global_events%
   (class object%
@@ -31,24 +278,40 @@
         
     (define/public (process)
       (cond
-        [(= (heap-count events-list) 0) (let () (begin
-                                          (set! global_timer (+ 1 global_timer))
-                                          (define temp-minerlist (filter (lambda (x) (send x make-block (get-field pending-trans x))) minerlist)) 
-                                          (mine-on-list 1 no_of_zeros temp-minerlist global_timer)
-                                          (process)))]
-        [else (begin
-               (define event2 (heap-min events-list))
-               (heap-remove-min! events-list)
-               (if (< global_timer (event-time event2))
-                   (let () (begin
-                     (define temp-minerlist (filter (lambda (x) (send x make-block (get-field pending-trans x))) minerlist))
-                     (mine-on-list (- (event-time event2) global_timer) no_of_zeros temp-minerlist global_timer)
-                     (set! global_timer (event-time event2))
-                     ((event-process event2))
-                     (process)))
-                   (begin
-                     (event-process event2)
-                     (process))))]))))
+        [(= (heap-count events-list) 0) (let* [(temp-minerlist (filter (lambda (x) (send x make-block (get-field pending-trans x))) minerlist))]
+                                          (begin
+                                            ;(display minerlist)
+                                            ;(newline)
+                                            ;(display temp-minerlist)
+                                            ;(display " 2 ")
+                                            ;(newline)
+                                            (set! global_timer (+ 1 global_timer))  
+                                            (mine-on-list 1 no_of_zeros temp-minerlist global_timer)
+                                            (if (null? temp-minerlist)
+                                                (begin
+                                                  (newline)
+                                                  (display "Fin Cayo")
+                                                )
+                                                (process))))]
+        [else (let* [(event2 (heap-min events-list))
+                     ]
+                (begin
+                  (heap-remove-min! events-list)
+                  (if (< global_timer (event-time event2))
+                      (let* [(temp-minerlist (filter (lambda (x) (send x make-block (get-field pending-trans x))) minerlist))] (begin
+                                ;(display minerlist)
+                                ;(newline)
+                                ;(display temp-minerlist)
+                                ;(display " 2 ")
+                                (newline)
+                                ;(define temp-minerlist )
+                                (mine-on-list (- (event-time event2) global_timer) no_of_zeros temp-minerlist global_timer)
+                                (set! global_timer (event-time event2))
+                                ((event-process event2))
+                                (process)))
+                      (begin
+                        (event-process event2)
+                        (process)))))]))))
 
 (define globaleventslist (make-object global_events%))
 
@@ -60,27 +323,28 @@
     (define connections initial-connections)
     (init-field private-key)
     (init-field (localtime 0))
-    
+    (init (initial_Blockchain (list )))
+    ;Block chain initializer
     (define local_Blockchain initial_Blockchain)
     ;Initial accepted Blockchain (for starting the simulation)
-    (define total-accepted-payments '())
+    (init (init-total (list )))
+    (define total-accepted-payments init-total)    
     ;List of Transactions in which payment is received and the Transaction is confirmed.
-    (define received-payments-to-be-used '())
+    (init (init-received (list )))
+    (define received-payments-to-be-used init-received)
     ;A List of pairs. Each element of the list is pair whose first element is again a pair
     ;and second element is the amount received by this node.
     ;First element is a pair whose First element in turn is the transaction ID
     ;and Second element is the output array index of the same transaction in which given
     ;node receives money
     ;Transactions referenced here have been confirmed but not used again.
-    (define pending-payments-to-confirm '())
+    (define pending-payments-to-confirm (list ))
     ;List of Transactions in which payments are received but not yet confirmed by the blockchain.
-    (define pending-payments-to-be-made '())
+    (define pending-payments-to-be-made (list ))
     ;List of lists, each element list consists of a nodename and amount
     ;indicating payment of "amount" has yet to be done to the given "nodename" 
-    (define forks '())
+    (define forks (list ))
     ;Simply a list of future Blockchain extensions the node has heard.
-    (init (initial_Blockchain '()))
-    ;Block chain initializer
     (super-new)
     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -98,7 +362,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;    
     (define/public (Display-payment-status bool nodename1 amount2 nodename2 time2)
       (if bool
-          ( (display "Payment made: ")
+          (begin
+            (newline)
+            (display "Payment made: ")
             (display amount2)
             (display " By ")
             (display nodename1)
@@ -106,8 +372,10 @@
             (display nodename2)
             (display " Time: ")
             (display time2)
-            (display "/n"))
-          ((display "Attempt to pay failed: ")
+            (newline))
+          (begin
+           (newline)
+           (display "Attempt to pay failed: ")
            (display amount2)
            (display " By ")
            (display nodename1)
@@ -115,20 +383,24 @@
            (display nodename2)
            (display " Time: ")
            (display time2)
-           (display "/n"))))
+           (newline))))
                     
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     (define/public (broadcast message time)
       (define (send-msg conn msg time)
         (cond [(null? conn) (display "Message Broadcasted: time:")
-                            (display (get-field global-timer globaleventslist))]
+                            ;(newline)
+                            (display (get-field global_timer globaleventslist))
+                            (newline)
+                            (newline)]
               [(list? conn) (begin
+                              ;(display "Broadcasting...")
                               (define (f) (send (car (car conn)) receive msg (+ (cadr (car conn)) time)))
                               (send globaleventslist insert_event f (+ (cadr (car conn)) time))
-                              (send-msg (cdr conn) msg))]
+                              (send-msg (cdr conn) msg time))]
               [else (begin
                      (display "Connections of invalid type")
-                    (display "/n"))]))
+                    (newline))]))
       (send-msg connections message time))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     (define/public (receive message time)
@@ -138,17 +410,22 @@
                                                                      (if
                                                                       (Safe_Fork_Available? time)
                                                                       (begin
+                                                                        (display nodename)
+                                                                        (newline)
+                                                                        (display "My Blockchain has been updated!!")
+                                                                        (newline)
+                                                                        (newline)
                                                                         (Accept-New-Payment time)
                                                                         (Make-Old-Payments time)
                                                                         )
                                                                       (void)))]
                                     [else (display "Block rejected by: ")
                                           (display nodename)
-                                          (display "/n")])]
+                                          (newline)])]
             [else (void)]))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     (define (Make-payment new nodename2 amount2 time2)
-      (define inparray '())
+      (define inparray (list ))
       (define total 0)
       (define (take-ids)
         (if (< total amount2)
@@ -161,7 +438,7 @@
                                                       (begin
                                                         (Display-payment-status #f nodename amount2 nodename2 time2)
                                                         (set! pending-payments-to-be-made
-                                                              (cons '(nodename2 amount2) pending-payments-to-be-made))
+                                                              (cons (list nodename2 amount2) pending-payments-to-be-made))
                                                         #f
                                                         )
                                                       (begin
@@ -171,7 +448,7 @@
                                                                       (begin
                                                                        (Display-payment-status #f nodename amount2 nodename2 time2) 
                                                                        (set! pending-payments-to-be-made
-                                                                             (cons '(nodename2 amount2) pending-payments-to-be-made))
+                                                                             (cons (list nodename2 amount2) pending-payments-to-be-made))
                                                                        #f
                                                                        )
                                                                      (begin
@@ -185,6 +462,7 @@
                            (transaction_done (trans transid nodename inparray outarray signature))]                  
                      (begin
                        (Display-payment-status #t nodename amount2 nodename2 time2)
+                       (newline)
                        (broadcast transaction_done time2)
                        #t
                        )))]))
@@ -199,7 +477,7 @@
       
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   (define/public (accept-new-payment blckchain trans11 time2)
-    (define btoskip 3)
+    (define btoskip 0)
     (define (check)
       (if (= (cdr (car (trans-outarray trans11))) nodename)
           0
@@ -227,7 +505,7 @@
                   (display nodename)
                   (display " Time: ")
                   (display time2)
-                  (display "/n")
+                  (newline)
                   #t))
               (helper (cdr chain))
               )           
@@ -250,7 +528,7 @@
   ;(define newforks (map (λ (x) (append x local-Blockchain)) forks))
   (define bool #t)
   (define (helper forklist)
-    (if (null? forklist) (begin (set! bool #f) '())
+    (if (null? forklist) (begin (set! bool #f) (list ))
         (if (Extension? (append (car forklist) local_Blockchain) message)
             (cons (cons message (car forklist)) (cdr forklist) )
             (cons (car forklist) (helper (cdr forklist))))))
@@ -273,7 +551,7 @@
                                (display nodename)
                                (display " Time: ")
                                (display time2)
-                               (display "/n")
+                               (newline)
                                (void))) new_accepted_trans2)
           
             (set! total-accepted-payments (append new_accepted_trans total-accepted-payments))
@@ -285,7 +563,7 @@
                                                        received-payments-to-be-used))
             (set! pending-payments-to-confirm  (append pending-payments-to-confirm
                                                        new_pending_confirmations))
-            (set! forks '())
+            (set! forks (list ))
             (set! local_Blockchain (append maxfork local_Blockchain))) 
         )
       #f)
@@ -313,13 +591,13 @@
 
 ;;((tid elementnumber amt 1/0 : comfirmed with)  )
 (define (extract-from-fork fork)
-  (define btoskip 3)
+  (define btoskip 0)
   ;(define conf (access forks 3) )
   (define (filtertrans transaction)
     (index-where (trans-outarray transaction) (λ (x) (equal? (cdr x) nodename )) ) ;;nodename is public id
     )
   (define (iter-over-list ltrans val)
-    (if (null? ltrans) '()
+    (if (null? ltrans) (list )
         (if (filtertrans (car ltrans))
             (let ((elnum (filtertrans (car ltrans)))
                   (oarr (trans-outarray (car ltrans)))
@@ -332,7 +610,7 @@
         ))
   
   (define (helper listf val)
-    (if (null? listf) '()
+    (if (null? listf) (list )
         (append (iter-over-list (block-ltrans (car listf)) val) (helper (cdr listf) val) ))
     )
 
@@ -340,20 +618,20 @@
  )
 
 (define (extract-from-fork-new fork)
-  (define btoskip 3)
+  (define btoskip 0)
   ;(define conf (access forks 3) )
   (define (filtertrans transaction)
     (index-where (trans-outarray transaction) (λ (x) (equal? (cdr x) nodename )) ) ;;nodename is public id
     )
   (define (iter-over-list ltrans val)
-    (if (null? ltrans) '()
+    (if (null? ltrans) (list )
         (if (filtertrans (car ltrans))
             (cons (car ltrans) (iter-over-list (cdr ltrans)))
             (iter-over-list (cdr ltrans))) 
         ))
   
   (define (helper listf val)
-    (if (null? listf) '()
+    (if (null? listf) (list )
         (append (iter-over-list (block-ltrans (car listf)) val) (helper (cdr listf) val) ))
     )
 
@@ -365,21 +643,21 @@
 
    (define miner%
       (class object%
-        (init-field (pending-trans '()))
+        (init-field (pending-trans (list )))
         (init-field (nodename 0))
-        (init (initial-connections '()))
+        (init (initial-connections (list )))
         (define connections initial-connections)
         (init-field (private-key 0))
         (init-field (localtime 0))
-        (init-field (local_Blockchain initial_Blockchain))
+        (init-field (local_Blockchain (list )))
         ;Initial accepted Blockchain (for starting the simulation)
-        (init (initial_Blockchain '()))
+        ;(init (initial_Blockchain (list )))
         ;Block chain initializer
-        (init-field (computing-power intialized-power))
-        (init (intialized-power 1))
+        (init-field (computing-power 1))
+        ;(init (intialized-power 1))
         ;For defining the given miner's computing power
-        (init-field (block_to_be_mined initial_mining_block))
-        (init (initial_mining_block (block 0 '() 0)))
+        (init-field (block_to_be_mined (block 0 (list ) 0)))
+        ;(init (initial_mining_block (block 0 (list ) 0)))
         ;initalizer for mining block
         (init-field (to_mine 0))
 
@@ -430,16 +708,21 @@
 ;                                (set! i (+ i 1))
 ;                                (struct-copy trans x [id i] )) (reverse list-trans)))))
        (if (< (length ltrans) 10)
-           #f           
+           (begin
+             ;(display (length ltrans))
+             (newline)
+             #f    )       
            (let* [(trans_id_here (string->number (string-append (~v (get-field global_timer globaleventslist) ) (~v nodename))))
                   (new_ltrans (cons (trans trans_id_here
                                            nodename
-                                           '()
+                                           (list )
                                            (list (cons block-reward nodename))
-                                           "Nilay")
+                                           "AA")
                                     (access ltrans (- (length ltrans) 10))))]
              (begin
-               (set! block_to_be_mined (block hash new_ltrans '()))
+               ;(display "Made Block To Be Mined Successfully")
+               ;(newline)
+               (set! block_to_be_mined (block hash new_ltrans (list )))
                (set! to_mine 1)
                #t))) 
        )
@@ -453,7 +736,7 @@
 
 
      (define/public (add-trans? trans)
-       (define newchain (cons (block '() pending-trans '()) local_Blockchain))
+       (define newchain (cons (block (list ) pending-trans (list )) local_Blockchain))
        (check-trans? trans newchain)
        )
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -464,20 +747,36 @@
                                       (begin
                                        (display "New transaction discovered by miner : ")
                                        (display nodename)
-                                       (display "/n"))
-                                      (void))]))
+                                       (newline)
+                                       (set! pending-trans (cons message pending-trans))
+                                       )
+                                      (begin
+                                        ;(display "Message:")
+                                        ;(newline)
+                                        ;(display message)
+                                        ;(newline)
+                                        (display "Not so valid message")
+                                        (newline)))]))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         (define/public (broadcast message time)
           (define (send-msg conn msg time)
-            (cond [(null? conn) (display "Message Broadcasted: time:")
-                                (display (get-field global-timer globaleventslist))]
+            (cond [(null? conn) (begin
+                                  (newline)
+                                  (display "Message Broadcasted: time: ")
+                                  (display (get-field global_timer globaleventslist))
+                                  (newline)
+                                  (display "Broadcast by Miner")
+                                  (newline))]
                   [(list? conn) (begin
+                                  (display "Miner sending message to ")
+                                  (display (get-field nodename (car (car conn))))
+                                  (newline)
                                   (define (f) (send (car (car conn)) receive msg (+ (cadr (car conn)) time)))
                                   (send globaleventslist insert_event f (+ (cadr (car conn)) time))
-                                  (send-msg (cdr conn) msg))]
+                                  (send-msg (cdr conn) msg time))]
                   [else (begin
                           (display "Connections of invalid type")
-                          (display "/n"))]))
+                          (newline))]))
           (send-msg connections message time))
         
 ))
@@ -490,18 +789,190 @@
     (if (equal? i 0) #f
         (if (null? mlist)
             (begin (set! i (- i 1)) (helper lminer))
-            (let ([mineval (mine-for (get-field computing-power (car mlist)) (get-field block_to_be_mined (car mlist)) nos)])
-              (if mineval
+            (let* ((mineval (mine-for (get-field computing-power (car mlist)) (get-field block_to_be_mined (car mlist)) nos)))
+              (begin
+                ;(display "This is mineval bitch")
+                ;(newline)
+                ;(display mineval)
+                ;(newline)
+                (if (block? mineval)
                   (begin
                     (send (car mlist) remove-trans mineval)
                     (send (car mlist) broadcast mineval (+ (- time i) 1 time2))
+                    (display "Found my Nonce!!!")
+                    (newline)
                     #t)
-                  (helper (cdr mlist))
-                  )
+                  (begin
+                    ;(display "Not Yet Bitch")
+                    ;(newline)
+                    (helper (cdr mlist)))
+                  ))
               ))))
   (helper lminer)
 )
 
 
+
+(define key1 (key-gen))
+(define key2 (key-gen))
+(define key3 (key-gen))
+(define pubkey1 (cdr key1))
+(define pubkey2 (cdr key2))
+(define pubkey3 (cdr key3))
+(define scrkey1 (car key1))
+(define scrkey2 (car key2))
+(define scrkey3 (car key3))
+
+(define init-block (block "AA" (list ;(id pub inparray outarray digsig)
+                              (trans 1
+                                     pubkey2
+                                     (list )
+                                     (list (cons 10 pubkey2))
+                                     (dig-sign (concat (list 1 pubkey2 (list ) (list (cons 10 pubkey2)))) scrkey2))
+                              (trans 2
+                                     pubkey2
+                                     (list )
+                                     (list (cons 10 pubkey2))
+                                     (dig-sign (concat (list 2 pubkey2 (list ) (list (cons 10 pubkey2)))) scrkey2))
+                              (trans 3
+                                     (cdr key2)
+                                     (list )
+                                     (list (cons 10 pubkey2))
+                                     (dig-sign (concat (list 3 pubkey2 (list ) (list (cons 10 pubkey2)))) scrkey2))
+                              (trans 4
+                                     (cdr key2)
+                                     (list )
+                                     (list (cons 10 pubkey2))
+                                     (dig-sign (concat (list 4 pubkey2 (list ) (list (cons 10 pubkey2)))) scrkey2))
+                              (trans 5
+                                     (cdr key2)
+                                     (list )
+                                     (list (cons 10 pubkey2))
+                                     (dig-sign (concat (list 5 pubkey2 (list ) (list (cons 10 pubkey2)))) scrkey2))
+                              (trans 6
+                                     (cdr key3)
+                                     (list )
+                                     (list (cons 10 pubkey3))
+                                     (dig-sign (concat (list 6 pubkey3 (list ) (list (cons 10 pubkey3)))) scrkey3))
+                              (trans 7
+                                     (cdr key3)
+                                     (list )
+                                     (list (cons 10 pubkey3))
+                                     (dig-sign (concat (list 7 pubkey3 (list ) (list (cons 10 pubkey3)))) scrkey3))
+                              (trans 8
+                                     (cdr key3)
+                                     (list )
+                                     (list (cons 10 pubkey3))
+                                     (dig-sign (concat (list 8 pubkey3 (list ) (list (cons 10 pubkey3)))) scrkey3))
+
+                            
+                              (trans 9
+                                     (cdr key3)
+                                     (list)
+                                     (list (cons 10 pubkey3))
+                                     (dig-sign (concat (list 9 pubkey3 (list ) (list (cons 10 pubkey3)))) scrkey3))
+                              (trans 10
+                                     (cdr key3)
+                                     (list )
+                                     (list (cons 10 pubkey3))
+                                     (dig-sign (concat (list 10 pubkey3 (list ) (list (cons 10 pubkey3)))) scrkey3))
+
+                              )
+                          ""))
+
+(define newblock (mine "AA" (block-ltrans init-block) no_of_zeros))
+;(init-field (pending-trans (list )))
+;        (init-field (nodename 0))
+;        (init (initial-connections (list )))
+;        (define connections initial-connections)
+;        (init-field (private-key 0))
+;        (init-field (localtime 0))
+;        (init-field (local_Blockchain (list )))
+;        ;Initial accepted Blockchain (for starting the simulation)
+;        ;(init (initial_Blockchain (list )))
+;        ;Block chain initializer
+;        (init-field (computing-power 1))
+;        ;(init (intialized-power 1))
+;        ;For defining the given miner's computing power
+;        (init-field (block_to_be_mined (block 0 (list ) 0)))
+;        ;(init (initial_mining_block (block 0 (list ) 0)))
+;        ;initalizer for mining block
+;        (init-field (to_mine 0))
+
+
+;(init-field nodename)
+;    (init initial-connections)
+;    (define connections initial-connections)
+;    (init-field private-key)
+;    (init-field (localtime 0))
+;    (init (initial_Blockchain (list )))
+;    ;Block chain initializer
+;    (define local_Blockchain initial_Blockchain)
+;    ;Initial accepted Blockchain (for starting the simulation)
+;    (define total-accepted-payments init-total)
+;    (init (init-total (list )))
+;    ;List of Transactions in which payment is received and the Transaction is confirmed.
+;    (define received-payments-to-be-used init-received)
+;    (init (init-received (list )))
+;    ;A List of pairs. Each element of the list is pair whose first element is again a pair
+;    ;and second element is the amount received by this node.
+;    ;First element is a pair whose First element in turn is the transaction ID
+;    ;and Second element is the output array index of the same transaction in which given
+;    ;node receives money
+;    ;Transactions referenced here have been confirmed but not used again.
+;    (define pending-payments-to-confirm (list ))
+;    ;List of Transactions in which payments are received but not yet confirmed by the blockchain.
+;    (define pending-payments-to-be-made (list ))
+;    ;List of lists, each element list consists of a nodename and amount
+;    ;indicating payment of "amount" has yet to be done to the given "nodename" 
+;    (define forks (list ))
+
+(define minerA (make-object miner% (list ) pubkey1 (list ) scrkey1 0 (list newblock) 10))
+
+(define initial-total-2 (filter (λ (x) (= (trans-pub x) pubkey2)) (block-ltrans newblock)))
+(define initial-total-3 (filter (λ (x) (= (trans-pub x) pubkey3)) (block-ltrans newblock)))
+
+(define initial-received-2 (map (lambda (x) (cons (cons (trans-id x) 0) (car (car (trans-outarray x))))) (filter (λ (x) (= (trans-pub x) pubkey2)) (block-ltrans newblock))))
+(define initial-received-3 (map (lambda (x) (cons (cons (trans-id x) 0) (car (car (trans-outarray x))))) (filter (λ (x) (= (trans-pub x) pubkey3)) (block-ltrans newblock))))
+
+(define nodeB (make-object node% pubkey2 (list ) scrkey2 0 (list newblock) initial-total-2 initial-received-2 ))
+
+(define nodeC (make-object node% pubkey3 (list ) scrkey3 0 (list newblock) initial-total-3 initial-received-3 ))
+
+(send minerA add-new-connection nodeB 1)
+(send minerA add-new-connection nodeC 1)
+(send nodeB add-new-connection minerA 1)
+(send nodeB add-new-connection nodeC 1)
+(send nodeC add-new-connection minerA 1)
+(send nodeC add-new-connection nodeB 1)
+
+(define (f1) (send nodeB attempt_transaction pubkey3 1 12))
+(define (f2) (send nodeC attempt_transaction pubkey2 1 15))
+(define (f3) (send nodeB attempt_transaction pubkey3 1 18))
+(define (f4) (send nodeC attempt_transaction pubkey2 1 21))
+(define (f5) (send nodeB attempt_transaction pubkey3 1 24))
+(define (f6) (send nodeC attempt_transaction pubkey2 1 27))
+(define (f7) (send nodeB attempt_transaction pubkey3 1 33))
+(define (f8) (send nodeC attempt_transaction pubkey2 1 37))
+(define (f9) (send nodeB attempt_transaction pubkey3 1 40))
+(define (f10) (send nodeC attempt_transaction pubkey2 1 44))
+(define (f11) (send nodeC attempt_transaction pubkey2 1 49))
+(define (f12) (send nodeC attempt_transaction pubkey2 10 55))
+
+(send globaleventslist insert_event f1 12)
+(send globaleventslist insert_event f2 15)
+(send globaleventslist insert_event f3 18)
+(send globaleventslist insert_event f4 21)
+(send globaleventslist insert_event f5 24)
+(send globaleventslist insert_event f6 27)
+(send globaleventslist insert_event f7 33)
+(send globaleventslist insert_event f8 37)
+(send globaleventslist insert_event f9 40)
+(send globaleventslist insert_event f10 44)
+(send globaleventslist insert_event f11 49)
+(send globaleventslist insert_event f12 55)
+
+(set! minerlist (list minerA))
+(send globaleventslist process)
 
     
