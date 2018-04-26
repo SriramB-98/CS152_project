@@ -1,0 +1,762 @@
+Payment made: 9 Bitcoins  By Alice To Bob Time : 12
+Message Broadcasted at time : 12
+
+
+
+
+A Message is received by : Bob
+Received a non block message Time : 13
+New transaction discovered by miner : Nilay Time : 13
+
+New transaction discovered by miner : Sriram Time : 13
+
+New transaction discovered by miner : Adwait Time : 13
+
+New transaction discovered by miner : Nitish Time : 13
+
+
+
+
+
+
+Payment made: 1 Bitcoins  By Bob To Alice Time : 15
+Message Broadcasted at time : 15
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 16
+New transaction discovered by miner : Nilay Time : 16
+
+New transaction discovered by miner : Sriram Time : 16
+
+New transaction discovered by miner : Adwait Time : 16
+
+New transaction discovered by miner : Nitish Time : 16
+
+
+
+
+
+
+Payment made: 5 Bitcoins  By Alice To Bob Time : 18
+Message Broadcasted at time : 18
+
+
+
+
+A Message is received by : Bob
+Received a non block message Time : 19
+New transaction discovered by miner : Nilay Time : 19
+
+New transaction discovered by miner : Sriram Time : 19
+
+New transaction discovered by miner : Adwait Time : 19
+
+New transaction discovered by miner : Nitish Time : 19
+
+
+
+
+
+
+Payment made: 4 Bitcoins  By Bob To Alice Time : 21
+Message Broadcasted at time : 21
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 22
+New transaction discovered by miner : Nilay Time : 22
+
+New transaction discovered by miner : Sriram Time : 22
+
+New transaction discovered by miner : Adwait Time : 22
+
+New transaction discovered by miner : Nitish Time : 22
+
+
+
+
+
+
+Payment made: 1 Bitcoins  By Alice To Bob Time : 24
+Message Broadcasted at time : 24
+
+
+
+
+A Message is received by : Bob
+Received a non block message Time : 25
+New transaction discovered by miner : Nilay Time : 25
+
+New transaction discovered by miner : Sriram Time : 25
+
+New transaction discovered by miner : Adwait Time : 25
+
+New transaction discovered by miner : Nitish Time : 25
+
+
+
+
+
+
+Payment made: 1 Bitcoins  By Bob To Alice Time : 27
+Message Broadcasted at time : 27
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 28
+New transaction discovered by miner : Nilay Time : 28
+
+New transaction discovered by miner : Sriram Time : 28
+
+New transaction discovered by miner : Adwait Time : 28
+
+New transaction discovered by miner : Nitish Time : 28
+
+
+
+
+
+
+Payment made: 6 Bitcoins  By Alice To Bob Time : 33
+Message Broadcasted at time : 33
+
+
+
+
+A Message is received by : Bob
+Received a non block message Time : 34
+New transaction discovered by miner : Nilay Time : 34
+
+New transaction discovered by miner : Sriram Time : 34
+
+New transaction discovered by miner : Adwait Time : 34
+
+New transaction discovered by miner : Nitish Time : 34
+
+
+
+
+
+
+Payment made: 9 Bitcoins  By Bob To Alice Time : 37
+Message Broadcasted at time : 37
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 38
+New transaction discovered by miner : Nilay Time : 38
+
+New transaction discovered by miner : Sriram Time : 38
+
+New transaction discovered by miner : Adwait Time : 38
+
+New transaction discovered by miner : Nitish Time : 38
+
+
+
+
+
+
+Payment made: 8 Bitcoins  By Alice To Bob Time : 40
+Message Broadcasted at time : 40
+
+
+
+
+A Message is received by : Bob
+Received a non block message Time : 41
+New transaction discovered by miner : Nilay Time : 41
+
+New transaction discovered by miner : Sriram Time : 41
+
+New transaction discovered by miner : Adwait Time : 41
+
+New transaction discovered by miner : Nitish Time : 41
+
+
+
+
+
+
+Payment made: 3 Bitcoins  By Bob To Alice Time : 44
+Message Broadcasted at time : 44
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 45
+New transaction discovered by miner : Nilay Time : 45
+
+New transaction discovered by miner : Sriram Time : 45
+
+New transaction discovered by miner : Adwait Time : 45
+
+New transaction discovered by miner : Nitish Time : 45
+
+Made Block To Be Mined Successfully
+Time : 45
+
+Made Block To Be Mined Successfully
+Time : 45
+
+Made Block To Be Mined Successfully
+Time : 45
+
+Made Block To Be Mined Successfully
+Time : 45
+Found my Nonce!!!  Miner: Nilay
+ Time : 46
+
+Miner sending message to Sriram Time : 46
+
+expected time to reach the other end : 47
+
+
+Miner sending message to Bob Time : 46
+
+expected time to reach the other end : 47
+
+
+Miner sending message to Alice Time : 46
+
+expected time to reach the other end : 47
+
+
+Message Broadcasted at time : 46
+Broadcast by Miner
+
+Payment made: 2 Bitcoins  By Bob To Alice Time : 49
+Message Broadcasted at time : 49
+A Message is received by : Alice
+New Fork added for node : 
+Alice
+A Message is received by : Bob
+New Fork added for node : 
+Bob
+
+
+Made Block To Be Mined Successfully
+Time : 49
+
+Made Block To Be Mined Successfully
+Time : 49
+Found my Nonce!!!  Miner: Nitish
+ Time : 50
+
+Miner sending message to Adwait Time : 50
+
+expected time to reach the other end : 51
+
+
+Miner sending message to Bob Time : 50
+
+expected time to reach the other end : 128
+
+
+Miner sending message to Alice Time : 50
+
+expected time to reach the other end : 106
+
+
+Message Broadcasted at time : 50
+Broadcast by Miner
+A Message is received by : Alice
+Received a non block message Time : 50
+New transaction discovered by miner : Nilay Time : 50
+
+New transaction discovered by miner : Nitish Time : 50
+
+New transaction discovered by miner : Sriram Time : 50
+
+New transaction discovered by miner : Adwait Time : 50
+
+
+
+Made Block To Be Mined Successfully
+Time : 50
+
+Found my Nonce!!!  Miner: Adwait
+ Time : 51
+
+Miner sending message to Nitish Time : 51
+
+expected time to reach the other end : 52
+
+
+Miner sending message to Bob Time : 51
+
+expected time to reach the other end : 112
+
+
+Miner sending message to Alice Time : 51
+
+expected time to reach the other end : 116
+
+
+Message Broadcasted at time : 51
+Broadcast by Miner
+
+
+
+
+
+
+
+
+
+Payment made: 10 Bitcoins  By Bob To Alice Time : 55
+Message Broadcasted at time : 55
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 56
+New transaction discovered by miner : Nilay Time : 56
+
+New transaction discovered by miner : Sriram Time : 56
+
+New transaction discovered by miner : Adwait Time : 56
+
+New transaction discovered by miner : Nitish Time : 56
+
+
+
+
+
+
+Payment made: 9 Bitcoins  By Alice To Bob Time : 60
+Message Broadcasted at time : 60
+
+
+
+
+A Message is received by : Bob
+Received a non block message Time : 61
+New transaction discovered by miner : Nilay Time : 61
+
+New transaction discovered by miner : Sriram Time : 61
+
+New transaction discovered by miner : Adwait Time : 61
+
+New transaction discovered by miner : Nitish Time : 61
+
+
+
+
+
+
+Payment made: 1 Bitcoins  By Bob To Alice Time : 65
+Message Broadcasted at time : 65
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 66
+New transaction discovered by miner : Nilay Time : 66
+
+New transaction discovered by miner : Sriram Time : 66
+
+New transaction discovered by miner : Adwait Time : 66
+
+New transaction discovered by miner : Nitish Time : 66
+
+
+
+
+
+
+Payment made: 5 Bitcoins  By Alice To Bob Time : 70
+Message Broadcasted at time : 70
+
+
+
+
+A Message is received by : Bob
+Received a non block message Time : 71
+New transaction discovered by miner : Nitish Time : 71
+
+
+Payment made: 4 Bitcoins  By Bob To Alice Time : 71
+Message Broadcasted at time : 71
+New transaction discovered by miner : Nilay Time : 71
+
+New transaction discovered by miner : Sriram Time : 71
+
+New transaction discovered by miner : Adwait Time : 71
+
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 72
+New transaction discovered by miner : Nilay Time : 72
+
+New transaction discovered by miner : Sriram Time : 72
+
+New transaction discovered by miner : Adwait Time : 72
+
+New transaction discovered by miner : Nitish Time : 72
+
+
+
+
+
+
+Payment made: 1 Bitcoins  By Alice To Bob Time : 73
+Message Broadcasted at time : 73
+
+
+
+
+A Message is received by : Bob
+Received a non block message Time : 74
+New transaction discovered by miner : Sriram Time : 74
+
+New transaction discovered by miner : Adwait Time : 74
+
+New transaction discovered by miner : Nitish Time : 74
+
+New transaction discovered by miner : Nilay Time : 74
+
+
+
+
+
+
+Payment made: 1 Bitcoins  By Bob To Alice Time : 89
+Message Broadcasted at time : 89
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 90
+New transaction discovered by miner : Nilay Time : 90
+
+New transaction discovered by miner : Sriram Time : 90
+
+New transaction discovered by miner : Adwait Time : 90
+
+New transaction discovered by miner : Nitish Time : 90
+
+
+
+
+
+
+Payment made: 6 Bitcoins  By Alice To Bob Time : 97
+Message Broadcasted at time : 97
+
+
+
+
+A Message is received by : Bob
+Received a non block message Time : 98
+New transaction discovered by miner : Nilay Time : 98
+
+New transaction discovered by miner : Sriram Time : 98
+
+New transaction discovered by miner : Adwait Time : 98
+
+New transaction discovered by miner : Nitish Time : 98
+
+
+Payment made: 9 Bitcoins  By Bob To Alice Time : 98
+Message Broadcasted at time : 98
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 99
+New transaction discovered by miner : Nilay Time : 99
+
+New transaction discovered by miner : Sriram Time : 99
+
+New transaction discovered by miner : Adwait Time : 99
+
+New transaction discovered by miner : Nitish Time : 99
+
+
+Payment made: 8 Bitcoins  By Alice To Bob Time : 99
+Message Broadcasted at time : 99
+Made Block To Be Mined Successfully
+Time : 99
+
+Made Block To Be Mined Successfully
+Time : 99
+
+Made Block To Be Mined Successfully
+Time : 99
+
+Made Block To Be Mined Successfully
+Time : 99
+Found my Nonce!!!  Miner: Adwait
+ Time : 100
+
+Miner sending message to Nitish Time : 100
+
+expected time to reach the other end : 101
+
+
+Miner sending message to Bob Time : 100
+
+expected time to reach the other end : 161
+
+
+Miner sending message to Alice Time : 100
+
+expected time to reach the other end : 165
+
+
+Message Broadcasted at time : 100
+Broadcast by Miner
+A Message is received by : Bob
+Received a non block message Time : 100
+New transaction discovered by miner : Nilay Time : 100
+
+New transaction discovered by miner : Sriram Time : 100
+
+New transaction discovered by miner : Adwait Time : 100
+
+New transaction discovered by miner : Nitish Time : 100
+
+Made Block To Be Mined Successfully
+Time : 100
+
+Made Block To Be Mined Successfully
+Time : 100
+
+
+Made Block To Be Mined Successfully
+Time : 100
+
+Made Block To Be Mined Successfully
+Time : 101
+
+Made Block To Be Mined Successfully
+Time : 101
+
+
+Made Block To Be Mined Successfully
+Time : 101
+Found my Nonce!!!  Miner: Sriram
+ Time : 102
+
+Miner sending message to Nilay Time : 102
+
+expected time to reach the other end : 103
+
+
+Miner sending message to Bob Time : 102
+
+expected time to reach the other end : 103
+
+
+Miner sending message to Alice Time : 102
+
+expected time to reach the other end : 103
+
+
+Message Broadcasted at time : 102
+Broadcast by Miner
+A Message is received by : Alice
+New Fork added for node : 
+Alice
+A Message is received by : Alice
+Checking if fork is extended for node : 
+AlicePayment of : 9 bitcoins accepted by node Alice Time : 103
+Payment of : 4 bitcoins accepted by node Alice Time : 103
+Payment of : 1 bitcoins accepted by node Alice Time : 103
+Payment of : 9 bitcoins accepted by node Alice Time : 103
+Payment of : 4 bitcoins accepted by node Alice Time : 103
+Payment of : 5 bitcoins accepted by node Alice Time : 103
+Payment of : 1 bitcoins accepted by node Alice Time : 103
+Payment of : 1 bitcoins accepted by node Alice Time : 103
+Payment of : 10 bitcoins accepted by node Alice Time : 103
+Payment of : 2 bitcoins accepted by node Alice Time : 103
+Payment of : 3 bitcoins accepted by node Alice Time : 103
+Payment of : 2 bitcoins accepted by node Alice Time : 103
+Payment of : 9 bitcoins accepted by node Alice Time : 103
+Payment of : 4 bitcoins accepted by node Alice Time : 103
+Payment of : 1 bitcoins accepted by node Alice Time : 103
+Payment of : 9 bitcoins accepted by node Alice Time : 103
+Payment of : 4 bitcoins accepted by node Alice Time : 103
+Payment of : 5 bitcoins accepted by node Alice Time : 103
+Payment of : 1 bitcoins accepted by node Alice Time : 103
+Payment of : 1 bitcoins accepted by node Alice Time : 103
+
+Fork is now used to update the blockchain for node : 
+Alice
+My Blockchain has been updated!!
+A Message is received by : Bob
+Checking if fork is extended for node : 
+BobPayment of : 1 bitcoins accepted by node Bob Time : 103
+Payment of : 6 bitcoins accepted by node Bob Time : 103
+Payment of : 9 bitcoins accepted by node Bob Time : 103
+Payment of : 1 bitcoins accepted by node Bob Time : 103
+Payment of : 6 bitcoins accepted by node Bob Time : 103
+Payment of : 5 bitcoins accepted by node Bob Time : 103
+Payment of : 9 bitcoins accepted by node Bob Time : 103
+Payment of : 9 bitcoins accepted by node Bob Time : 103
+Payment of : 0 bitcoins accepted by node Bob Time : 103
+Payment of : 8 bitcoins accepted by node Bob Time : 103
+Payment of : 7 bitcoins accepted by node Bob Time : 103
+Payment of : 8 bitcoins accepted by node Bob Time : 103
+Payment of : 1 bitcoins accepted by node Bob Time : 103
+Payment of : 6 bitcoins accepted by node Bob Time : 103
+Payment of : 9 bitcoins accepted by node Bob Time : 103
+Payment of : 1 bitcoins accepted by node Bob Time : 103
+Payment of : 6 bitcoins accepted by node Bob Time : 103
+Payment of : 5 bitcoins accepted by node Bob Time : 103
+Payment of : 9 bitcoins accepted by node Bob Time : 103
+Payment of : 9 bitcoins accepted by node Bob Time : 103
+
+Fork is now used to update the blockchain for node : 
+Bob
+My Blockchain has been updated!!
+
+
+
+Made Block To Be Mined Successfully
+Time : 106
+Found my Nonce!!!  Miner: Nitish
+ Time : 107
+
+Miner sending message to Adwait Time : 107
+
+expected time to reach the other end : 108
+
+
+Miner sending message to Bob Time : 107
+
+expected time to reach the other end : 185
+
+
+Miner sending message to Alice Time : 107
+
+expected time to reach the other end : 163
+
+
+Message Broadcasted at time : 107
+Broadcast by Miner
+A Message is received by : Bob
+Block rejected by: Bob Time : 112
+
+
+
+
+A Message is received by : Alice
+Block rejected by: Alice Time : 116
+
+
+
+
+A Message is received by : Bob
+Block rejected by: Bob Time : 128
+
+
+
+
+
+Payment made: 3 Bitcoins  By Bob To Alice Time : 144
+Message Broadcasted at time : 144
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 145
+New transaction discovered by miner : Nilay Time : 145
+
+New transaction discovered by miner : Sriram Time : 145
+
+New transaction discovered by miner : Adwait Time : 145
+
+New transaction discovered by miner : Nitish Time : 145
+
+
+
+
+
+
+Payment made: 2 Bitcoins  By Bob To Alice Time : 149
+Message Broadcasted at time : 149
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 150
+New transaction discovered by miner : Nitish Time : 150
+
+New transaction discovered by miner : Nilay Time : 150
+
+New transaction discovered by miner : Sriram Time : 150
+
+New transaction discovered by miner : Adwait Time : 150
+
+
+
+
+
+
+Payment made: 10 Bitcoins  By Bob To Alice Time : 155
+Message Broadcasted at time : 155
+
+
+
+
+A Message is received by : Alice
+Received a non block message Time : 156
+New transaction discovered by miner : Adwait Time : 156
+
+New transaction discovered by miner : Nitish Time : 156
+
+New transaction discovered by miner : Nilay Time : 156
+
+New transaction discovered by miner : Sriram Time : 156
+
+
+
+
+
+A Message is received by : Bob
+Block rejected by: Bob Time : 161
+
+
+
+
+A Message is received by : Alice
+Block rejected by: Alice Time : 163
+
+
+
+
+A Message is received by : Alice
+Block rejected by: Alice Time : 165
+
+
+
+
+A Message is received by : Bob
+Block rejected by: Bob Time : 185
+
+
+
+
+Fin Cayo
+> 
